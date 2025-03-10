@@ -1,0 +1,315 @@
+#include <stdio.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#define N_PROCESS 10 // process
+#define M_RESOURCES 5 // resources
+int allocation[N_PROCESS][M_RESOURCES];
+int request[N_PROCESS][M_RESOURCES];
+int available[M_RESOURCES];
+int available2[M_RESOURCES]; // this array is for safe state I put a values from my mind
+// to give a no detected deadlock
+
+void read_Allocation(){
+    printf("********** Allocation Matrix: ***********\n");
+    FILE *file= fopen("Allocation.csv","r");
+    char line[1000],*taken;
+    int row=0,column=0;
+    if(file==NULL){
+        printf("cant open the file\n");
+        exit(1);
+    } else{
+        while(fgets(line,1000,file)){
+            column=0;
+            if(row==0){ // skip the number of process and the name of resources
+                row++;
+
+                continue;
+            }
+            taken= strtok(line,",");
+            while(taken){
+                if (column > 0) { // Skip the first token column (process name)
+                    allocation[row - 1][column - 1] = atoi(taken);// atoi to convert from char to int
+                }
+                taken = strtok(NULL, ",");
+                column++;
+
+            }
+             row++;
+        }
+
+    }
+
+    fclose(file);
+
+    printf("ID\tR.A\tR.B\tR.C\tR.D\tR.E\n");
+    for (int i = 0; i < N_PROCESS; i++) {
+        printf("P%d\t",i+1);
+        for (int j = 0; j < M_RESOURCES; j++) {
+            printf("%d\t",allocation[i][j]);
+        }
+        printf("\n");
+    }
+
+
+}
+void read_request(){
+    printf("********** Request Matrix: ***********\n");
+    FILE *file= fopen("Request.csv","r");
+    char line[1000],*taken;
+    int row=0,column=0;
+    if(file==NULL){
+        printf("cant open the file\n");
+        exit(1);
+    } else{
+        while(fgets(line,1000,file)){
+            column=0;
+            if(row==0){ // skip the number of process and the name of resources
+                row++;
+
+                continue;
+            }
+            taken= strtok(line,",");
+            while(taken){
+                if (column > 0) { // Skip the first token column (process name)
+                    request[row - 1][column - 1] = atoi(taken);// atoi to convert from char to int
+                }
+                taken = strtok(NULL, ",");
+                column++;
+
+            }
+            row++;
+        }
+
+    }
+    fclose(file);
+    printf("ID\tR.A\tR.B\tR.C\tR.D\tR.E\n");
+    for (int i = 0; i < N_PROCESS; i++) {
+        printf("P%d\t",i+1);
+        for (int j = 0; j < M_RESOURCES; j++) {
+            printf("%d\t",request[i][j]);
+        }
+        printf("\n");
+    }
+
+
+}
+void read_available(){
+    printf("********** Available Matrix: ***********\n");
+
+    FILE *file= fopen("Available.csv","r");
+    char line[1000],*taken;
+    int row=0,column=0;
+    if(file==NULL){
+        printf("cant open the file\n");
+        exit(1);
+    } else{
+        while(fgets(line,1000,file)){
+            column=0;
+            if(row==0){ // skip the number of process and the name of resources row
+               row++; //1
+                continue;
+            }
+            taken= strtok(line,",");
+            while(taken){
+                available[column] = atoi(taken);// atoi to convert from char to int
+                taken = strtok(NULL, ",");
+                column++;
+
+            }
+        }
+
+    }
+
+    fclose(file);
+    printf("R.A\tR.B\tR.C\tR.D\tR.E\n");
+
+    for (int j = 0; j <M_RESOURCES ; j++) {
+        printf("%d\t", available[j]);
+    }
+    printf("\n");
+
+}
+void read_available2(){ // the value is 8 6 5 4 9
+    printf("********** Available2 Matrix: ***********\n");
+
+    FILE *file= fopen("Available2.csv","r");
+    char line[1000],*taken;
+    int row=0,column=0;
+    if(file==NULL){
+        printf("cant open the file\n");
+        exit(1);
+    } else{
+        while(fgets(line,1000,file)){
+            column=0;
+            if(row==0){ // skip the number of process and the name of resources row
+                row++; //1
+                continue;
+            }
+            taken= strtok(line,",");
+            while(taken){
+                available2[column] = atoi(taken);// atoi to convert from char to int
+                taken = strtok(NULL, ",");
+                column++;
+
+            }
+        }
+
+    }
+    fclose(file);
+    printf("R.A\tR.B\tR.C\tR.D\tR.E\n");
+
+    for (int j = 0; j <M_RESOURCES ; j++) {
+        printf("%d\t", available2[j]);
+    }
+    printf("\n");
+}
+void deadlock(){
+    int Work[M_RESOURCES], Finish[N_PROCESS];
+    int Counter = 0;
+
+    //step 1:
+    // Initialize Work vector to be equal to the Available vector
+    for (int j = 0; j < M_RESOURCES; j++) {
+        Work[j] = available[j];
+    }
+
+
+    for (int i = 0; i < N_PROCESS; i++) {
+        Finish[i] = true;
+        for (int j = 0; j < M_RESOURCES; j++) {
+            if (allocation[i][j] != 0) {
+                Finish[i] = false;
+                break;
+            }
+        }
+    }
+
+
+    // Step 2:
+    for (int i = 0; i < N_PROCESS; i++) {
+        if (!Finish[i]) {
+            bool canAllocate = true;
+            for (int j = 0; j < M_RESOURCES; j++) {
+                if (request[i][j] > Work[j]) { // the request should be smaller than the available
+                    canAllocate = false;
+                    break;
+                }
+            }
+
+            if (canAllocate) {
+                // Step 3
+                for (int j = 0; j < M_RESOURCES; j++) {
+                    Work[j] += allocation[i][j];
+                }
+                Finish[i] = true;
+                printf("Process P%d has finished execution.\n", i+1); // Print the process that finished
+
+                // Restart the algorithm from the beginning
+                i = -1;
+            }
+        }
+    }
+
+    // Step 4
+    for (int i = 0; i < N_PROCESS; i++) { // the system in the deadlock state
+        if (!Finish[i]) {
+            printf("System is in deadlock state.Process P%d is in deadlocked.\n",i+1);
+            Counter++;
+        }
+    }
+
+    if (Counter == 0) { // the system in the safe region
+        printf("No deadlock detected.\n");
+    }
+
+
+}
+void safe_state(){ // change the value of available to be in safe state to become 8 6 5 4 9
+    int Work[M_RESOURCES], Finish[N_PROCESS];
+    int Counter = 0;
+
+    //step 1:
+    // Initialize Work vector to be equal to the Available vector
+    for (int j = 0; j < M_RESOURCES; j++) {
+        Work[j] = available2[j];
+    }
+
+
+    for (int i = 0; i < N_PROCESS; i++) {
+        Finish[i] = true;
+        for (int j = 0; j < M_RESOURCES; j++) {
+            if (allocation[i][j] != 0) {
+                Finish[i] = false;
+                break;
+            }
+        }
+    }
+
+
+    // Step 2:
+    for (int i = 0; i < N_PROCESS; i++) {
+        if (!Finish[i]) {
+            bool canAllocate = true;
+            for (int j = 0; j < M_RESOURCES; j++) {
+                if (request[i][j] > Work[j]) { // the request should be smaller than the available
+                    canAllocate = false;
+                    break;
+                }
+            }
+
+            if (canAllocate) {
+                // Step 3
+                for (int j = 0; j < M_RESOURCES; j++) {
+                    Work[j] += allocation[i][j];
+                }
+                Finish[i] = true;
+                printf("Process P%d has finished execution.\n", i+1); // Print the process that finished
+
+                // Restart the algorithm from the beginning
+                i = -1;
+            }
+        }
+    }
+
+    // Step 4
+    for (int i = 0; i < N_PROCESS; i++) { // the system in the deadlock state
+        if (!Finish[i]) {
+            printf("System is in deadlock state.Process P%d is in deadlocked.\n",i+1);
+            Counter++;
+        }
+    }
+
+    if (Counter == 0) { // the system in the safe region
+        printf("No deadlock detected.\n");
+    }
+
+
+
+
+}
+
+
+int main() {
+    printf("\t\t\t\t---------- Noura Khdour  1212072  sec:3 ----------\n");
+    printf("\t\t\t\t ---------------- Task#3:Deadlock state --------------\n");
+    printf("\t\t\t\t -----------------------------------------------------\n");
+    printf("\n");
+   read_Allocation();
+   sleep(1);
+   read_request();
+   sleep(1);
+   read_available();
+   sleep(1);
+   read_available2();
+   sleep(1);
+   printf("\n");
+   printf("********** The system in deadlock state **********\n\n");
+   deadlock();
+   sleep(1);
+   printf("\n");
+   printf("********** The system in the safe state **********\n\n");
+   safe_state();
+    return 0;
+}
